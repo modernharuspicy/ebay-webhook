@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from config import VERIFICATION_TOKEN  # Import the verification token
+from config import VERIFICATION_TOKEN  # Import your verification token
 
 app = Flask(__name__)
 
@@ -10,7 +10,7 @@ def home():
 @app.route("/ebay-notifications", methods=["GET", "POST"])
 def ebay_notifications():
     """
-    Handles incoming notifications from eBay, including challenge-response verification.
+    Handles eBay webhook validation and incoming notifications.
     """
     if request.method == "GET":
         # eBay sends a GET request with a challenge_code to verify the webhook
@@ -22,9 +22,9 @@ def ebay_notifications():
             })
 
     elif request.method == "POST":
-        # Handle incoming notifications
+        # Handle incoming notifications from eBay
         data = request.json
-        print(f"🔹 Received eBay Notification: {data}")  # Logs request to Render logs
+        print(f"🔹 Received eBay Notification: {data}")  # Logs request in Render logs
         return jsonify({"status": "Received"}), 200
 
     return jsonify({"error": "Invalid request method"}), 405
