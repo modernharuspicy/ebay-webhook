@@ -7,11 +7,9 @@ app = Flask(__name__)
 
 WEBHOOK_URL = "https://ebay-webhook.onrender.com/ebay-notifications"  # Replace with your actual URL
 
-# Connect to SQLite database (creates one if it doesn’t exist)
+# Ensure the database and table exist
 conn = sqlite3.connect("ebay_notifications.db", check_same_thread=False)
 cursor = conn.cursor()
-
-# Create a table for storing eBay notifications (if not exists)
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,12 +19,11 @@ cursor.execute("""
     )
 """)
 conn.commit()
-
+conn.close()
 
 @app.route("/", methods=["GET"])
 def home():
     return "✅ eBay Webhook Server is Running!", 200
-
 
 @app.route("/ebay-notifications", methods=["GET", "POST"])
 def ebay_notifications():
@@ -48,17 +45,20 @@ def ebay_notifications():
     elif request.method == "POST":
         # Store incoming eBay notifications in SQLite database
         data = request.json
-        event_type = data.get("eventType", "Unknown")
+        event_type = data.get("metadata", {}).get("topic", "Unknown")
         event_data = str(data)
 
+        conn = sqlite3.connect("ebay_notifications.db")
+        cursor = conn.cursor()
         cursor.execute("INSERT INTO notifications (event_type, event_data) VALUES (?, ?)", (event_type, event_data))
         conn.commit()
+        conn.close()
 
-        print(f"🔹 Received eBay Notification: {data}")
+        print(f"✅ Stored eBay Notification in DB: {data}")
         return jsonify({"status": "Received"}), 200
 
     return jsonify({"error": "Invalid request method"}), 405
 
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
