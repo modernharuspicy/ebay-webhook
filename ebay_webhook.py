@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from config import VERIFICATION_TOKEN  # Import token
 
 app = Flask(__name__)
 
@@ -12,11 +13,14 @@ def ebay_notifications():
     Handles incoming notifications from eBay, including challenge-response verification.
     """
     data = request.json
-    print(f"🔹 Received eBay Notification: {data}")  # Logs request to Render logs
+    print(f"🔹 Received eBay Notification: {data}")  # Logs request
 
     # eBay requires a challenge-response verification
     if "challengeResponse" in data:
-        return jsonify({"challengeResponse": data["challengeResponse"]})
+        return jsonify({
+            "challengeResponse": data["challengeResponse"],
+            "verificationToken": VERIFICATION_TOKEN
+        })
 
     return jsonify({"status": "Received"}), 200
 
