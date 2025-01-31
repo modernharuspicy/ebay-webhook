@@ -16,15 +16,17 @@ def ebay_notifications():
         # eBay sends a GET request with a challenge_code to verify the webhook
         challenge_code = request.args.get("challenge_code")
         if challenge_code:
-            return jsonify({
+            response = {
                 "challengeResponse": challenge_code,
                 "verificationToken": VERIFICATION_TOKEN
-            })
+            }
+            print(f"🔹 Responding to eBay verification: {response}")
+            return jsonify(response), 200  # Ensure JSON response format
 
     elif request.method == "POST":
         # Handle incoming notifications from eBay
         data = request.json
-        print(f"🔹 Received eBay Notification: {data}")  # Logs request in Render logs
+        print(f"🔹 Received eBay Notification: {data}")
         return jsonify({"status": "Received"}), 200
 
     return jsonify({"error": "Invalid request method"}), 405
