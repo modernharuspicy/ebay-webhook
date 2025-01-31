@@ -1,4 +1,5 @@
 import hashlib
+import sqlite3
 from flask import Flask, request, jsonify
 from config import VERIFICATION_TOKEN  # Import your verification token
 
@@ -6,9 +7,26 @@ app = Flask(__name__)
 
 WEBHOOK_URL = "https://ebay-webhook.onrender.com/ebay-notifications"  # Replace with your actual URL
 
+# Connect to SQLite database (creates one if it doesn’t exist)
+conn = sqlite3.connect("ebay_notifications.db", check_same_thread=False)
+cursor = conn.cursor()
+
+# Create a table for storing eBay notifications (if not exists)
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_type TEXT,
+        event_data TEXT,
+        received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+conn.commit()
+
+
 @app.route("/", methods=["GET"])
 def home():
     return "✅ eBay Webhook Server is Running!", 200
+
 
 @app.route("/ebay-notifications", methods=["GET", "POST"])
 def ebay_notifications():
@@ -16,27 +34,31 @@ def ebay_notifications():
     Handles eBay webhook validation and incoming notifications.
     """
     if request.method == "GET":
-        # eBay sends a GET request with a challenge_code to verify the webhook
         challenge_code = request.args.get("challenge_code")
 
         if challenge_code:
-            # Hash the challenge_code + verification_token + endpoint URL
             combined_string = challenge_code + VERIFICATION_TOKEN + WEBHOOK_URL
             hashed_response = hashlib.sha256(combined_string.encode('utf-8')).hexdigest()
 
             response_data = {"challengeResponse": hashed_response}
+            print(f"🔹 Responding to eBay verification: {response_data}")
 
-            print(f"🔹 Responding to eBay verification: {response_data}")  # Logs response to Render logs
-
-            return jsonify(response_data), 200  # Ensure JSON response format
+            return jsonify(response_data), 200
 
     elif request.method == "POST":
-        # Handle incoming notifications from eBay
+        # Store incoming eBay notifications in SQLite database
         data = request.json
+        event_type = data.get("eventType", "Unknown")
+        event_data = str(data)
+
+        cursor.execute("INSERT INTO notifications (event_type, event_data) VALUES (?, ?)", (event_type, event_data))
+        conn.commit()
+
         print(f"🔹 Received eBay Notification: {data}")
         return jsonify({"status": "Received"}), 200
 
     return jsonify({"error": "Invalid request method"}), 405
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
