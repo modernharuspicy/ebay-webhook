@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from config import VERIFICATION_TOKEN  # Import token
+from config import VERIFICATION_TOKEN  # Import the verification token
 
 app = Flask(__name__)
 
@@ -7,22 +7,27 @@ app = Flask(__name__)
 def home():
     return "✅ eBay Webhook Server is Running!", 200
 
-@app.route("/ebay-notifications", methods=["POST"])
+@app.route("/ebay-notifications", methods=["GET", "POST"])
 def ebay_notifications():
     """
     Handles incoming notifications from eBay, including challenge-response verification.
     """
-    data = request.json
-    print(f"🔹 Received eBay Notification: {data}")  # Logs request
+    if request.method == "GET":
+        # eBay sends a GET request with a challenge_code to verify the webhook
+        challenge_code = request.args.get("challenge_code")
+        if challenge_code:
+            return jsonify({
+                "challengeResponse": challenge_code,
+                "verificationToken": VERIFICATION_TOKEN
+            })
 
-    # eBay requires a challenge-response verification
-    if "challengeResponse" in data:
-        return jsonify({
-            "challengeResponse": data["challengeResponse"],
-            "verificationToken": VERIFICATION_TOKEN
-        })
+    elif request.method == "POST":
+        # Handle incoming notifications
+        data = request.json
+        print(f"🔹 Received eBay Notification: {data}")  # Logs request to Render logs
+        return jsonify({"status": "Received"}), 200
 
-    return jsonify({"status": "Received"}), 200
+    return jsonify({"error": "Invalid request method"}), 405
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
